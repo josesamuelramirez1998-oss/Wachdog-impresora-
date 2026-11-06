@@ -16,7 +16,7 @@ class WindowsIntegrationTest(unittest.TestCase):
         self.folder = Path(self.tmp.name)
         self.valid = self.folder / "prueba.pdf"
         doc = fitz.open()
-        doc.new_page(width=595, height=842)
+        doc.new_page(width=180, height=240)
         doc.save(self.valid)
         doc.close()
 
