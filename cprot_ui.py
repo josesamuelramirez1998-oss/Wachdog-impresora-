@@ -27,7 +27,6 @@ def make_root():
         dark=dict(background="#0B1525", foreground="#EAF4FF"),
     ).register()
     root = ttk.App(theme="cprot-dark", title="CPROT | QRS-Card")
-    root.option_add("*Font", "Segoe UI 10")
     return root
 
 
