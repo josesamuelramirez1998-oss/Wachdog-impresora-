@@ -192,7 +192,7 @@ def build_interface(app):
     scrollbar = ttk.Scrollbar(lst, orient="vertical")
     app.files_box = tk.Listbox(
         lst, selectmode=tk.EXTENDED, exportselection=False, height=7,
-        font=("Consolas", 10), padx=10, pady=9, yscrollcommand=scrollbar.set,
+        font=("Consolas", 10), yscrollcommand=scrollbar.set,
     )
     app.files_box.grid(row=0, column=0, sticky="nsew")
     scrollbar.configure(command=app.files_box.yview)
