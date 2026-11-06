@@ -1,0 +1,34 @@
+# Entornos virtuales y caché
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Compilaciones locales
+build/
+dist/
+*.spec
+
+# Configuración local, estado y logs
+config_qrs.json
+print_jobs.json
+*.log
+*.tmp
+.env
+.env.*
+
+# Evitar publicar accidentalmente estudios o datos clínicos en Git
+*.pdf
+*.prn
+*.ps
+*.spl
+*.shd
+Pacientes/
+pacientes/
+Expedientes/
+expedientes/
+captura/
+temporal/
