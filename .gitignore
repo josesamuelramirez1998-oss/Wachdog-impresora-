@@ -32,3 +32,11 @@ Expedientes/
 expedientes/
 captura/
 temporal/
+
+# Capturas de impresión crudas: pueden contener datos clínicos
+*.pcl
+*.pjl
+*.partial
+*.raw
+capturas_pcl/
+captures_pcl/

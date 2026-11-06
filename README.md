@@ -1,115 +1,144 @@
-# QRS-Card — watchdog de impresión y expedientes PDF
+# CPROT QRS-Card — impresión y captura de estudios
 
-Aplicación local para **Windows** que recibe PDF producidos por una impresora virtual como PDFCreator, los renderiza con PyMuPDF y los envía **de uno en uno** a una impresora instalada en Windows. Después permite **seleccionar explícitamente** los estudios que corresponden a cada paciente y moverlos a su expediente.
+![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB)
+![Windows](https://img.shields.io/badge/Windows-10%20%2F%2011-0078D4)
+![Estado](https://img.shields.io/badge/Captura_PCL5-Laboratorio-orange)
 
-Pensado para software médico heredado. **No es un sistema clínico certificado** ni sustituye la comprobación manual de los documentos.
+Aplicación de escritorio para Windows con interfaz CPROT, vigilancia de archivos PDF, envío a la cola de impresión y archivado manual de estudios por paciente. **Incorpora un prototipo de captura nativa PCL/RAW sin PDFCreator.**
 
-## Funciones
+> [!CAUTION]
+> **Captura PCL experimental, NO validada para uso clínico.** No es un sistema médico certificado ni garantiza la continuidad o exactitud diagnóstica de un ECG. La impresora real y las configuraciones de QRS deben permanecer intactas mientras realizamos pruebas con datos ficticios.
 
-- Vigilancia con Watchdog de PDF **creados, modificados o movidos** a la carpeta temporal.
-- Espera a que el tamaño y la fecha sean estables y a que el archivo tenga marcador EOF y estructura PDF legible.
-- Cola de impresión de un solo trabajador.
-- Bitácora persistente para evitar **reenvíos automáticos del mismo archivo**, incluso al reiniciar. Los trabajos con resultado incierto se marcan para revisión y no se reintentan automáticamente.
-- Renderizado RGB a un máximo de 300 DPI y 12 millones de píxeles por página.
-- **Selección manual** de archivos al clasificar: no mueve todos los PDF al mismo paciente.
-- Nombres de carpetas válidos en Windows, colisiones de nombres evitadas y registro de errores.
+## Dos modalidades en una aplicación
 
-> **Importante:** «Enviado a impresora» quiere decir que Windows aceptó el trabajo en su cola. **NO confirma que haya salido el papel**, que exista tinta o que la impresora haya terminado.
+| Capacidad | PDF / Watchdog existente | Captura RAW / PCL experimental |
+|---|---|---|
+| Origen | PDFCreator u otro generador de PDF | Cola de impresión de laboratorio apuntando a 127.0.0.1 |
+| PDFCreator necesario | Solo si se usa para generar los PDF | **No** |
+| Original conservado | PDF | Flujo RAW tal como llega: PCL, PS, PDF o archivo parcial |
+| Salida PDF | PDF generado por el programa de origen | Conversión manual con GhostPCL separado, cuando es PCL |
+| Recepción mientras se imprime | Detecta PDF ya generado | **Recibe bytes durante la transmisión TCP** |
+| Trazo ECG continuo en pantalla | No | **No**: solo conserva lo que el software manda a imprimir |
+| Verificación de papel impreso | No | No: la cola de laboratorio no imprime físicamente |
+| Uso en consultorio | Tras validar contra impresora real | **No**, hasta superar validación formal |
 
-## Interfaz CPROT
+La captura protege el archivo original con una huella SHA-256. **El cierre de la conexión TCP no prueba que una prueba de esfuerzo haya finalizado:** el controlador puede dividir o mantener abiertos los trabajos. Un PDF convertido puede alterar fuentes, proporciones o la representación del trazado, por lo que se compara con el papel original antes de utilizarlo.
 
-La versión mejorada incluye un panel de escritorio en español con **identidad visual CPROT**, temas **oscuro y claro**, indicadores de vigilancia, contador de PDFs, trabajos pendientes, selección de impresora y pasos separados para archivar estudios. La preferencia de tema queda guardada en el archivo de configuración local.
+## Interfaz y módulos
 
-- **01 Configuración:** escoge carpeta de captura, expedientes e impresora.
-- **02 Estudios disponibles:** identifica documentos y selecciona cuáles enviar o reimprimir.
-- **03 Archivar en expediente:** asigna solamente los estudios seleccionados al paciente.
-- **04 Actividad reciente:** muestra lo ocurrido sin guardar el contenido de los PDF en el registro.
+La interfaz CPROT incluye encabezado azul, modo oscuro/claro, indicadores de vigilancia, selección de impresora, listado de PDF, selección de documentos por paciente e historial de eventos.
 
-La cabecera usa el nombre CPROT en texto; no incluye una imagen del logotipo oficial de la empresa.
-
-## Versión portátil de Windows
-
-En el Pull Request se genera automáticamente una **versión de prueba para Windows x64** mediante PyInstaller. Abre la pestaña **Checks / Actions**, localiza el flujo **Windows portable application** y descarga el artefacto **CPROT-QRS-Card-Windows-x64**. Descomprime la carpeta completa y ejecuta **CPROT-QRS-Card.exe**; no necesitas instalar Python para esa compilación.
-
-> El archivo ejecutable aún no está firmado y Windows SmartScreen puede mostrar una advertencia. Es una **compilación experimental**, no una versión de producción, y debe probarse primero con PDFs sin datos médicos reales. No elimines componentes de la carpeta portable.
+El botón **Captura PCL5 · LAB** abre una ventana independiente con estado del receptor TCP, avance en bytes, archivos conservados, trabajos incompletos y conversión opcional. La captura escucha **únicamente en 127.0.0.1**, puerto predeterminado **19100**, con límite de 512 MiB por conexión. **No intercepta silenciosamente la impresora del consultorio ni la convierte en virtual.**
 
 ## Requisitos
 
-- Windows 10/11, Python 3.11 o superior y una impresora configurada en Windows.
-- PDFCreator u otra impresora virtual que guarde automáticamente archivos PDF en una carpeta temporal.
-- Paquetes indicados en `requirements.txt`: PyMuPDF, Pillow, pywin32, watchdog y ttkbootstrap.
+- Windows 10/11 y Python 3.11 o posterior (si se ejecuta desde fuente).
+- Bibliotecas del archivo `requirements.txt`: PyMuPDF, Pillow, pywin32, watchdog y ttkbootstrap.
+- Para la prueba PCL: driver Windows **PCL5 compatible y ya instalado**. Su nombre debe verificarse; no basta con que diga «PCL».
+- Opcional: **GhostPCL** separado, para convertir PCL a PDF. No se incluye ni se distribuye con CPROT QRS-Card; revisar términos de licencia Artifex.
 
-## Instalar en Windows
+## Instalación en Windows con Python
 
-Abra PowerShell en una carpeta donde pueda guardar el programa:
+Abre PowerShell:
 
 ```powershell
 git clone https://github.com/josesamuelramirez1998-oss/Wachdog-impresora-.git
 cd Wachdog-impresora-
+git switch feature/native-pcl-capture-prototype
 py -3 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
 .\.venv\Scripts\python.exe print_manager.py
 ```
 
-Para probar la rama de mejoras, después del `cd` ejecute `git switch fix/reliable-print-watchdog` antes de instalar.
+### Programa portable
 
-## Configurar PDFCreator
+En el Pull Request de la rama, visita **Checks / Actions → Windows portable application**, descarga el artefacto de Windows x64, **descomprime la carpeta completa** y ejecuta `CPROT-QRS-Card.exe`. Es una compilación experimental sin firma digital; revisa su origen y utiliza solo equipos de prueba.
 
-1. Configure su perfil para **guardar automáticamente** cada trabajo PDF en la carpeta temporal.
-2. Elija un nombre de archivo único (fecha/hora y un identificador si es posible).
-3. Desactive acciones «Abrir después de guardar» y ventanas que interrumpan el proceso.
-4. En QRS-Card seleccione esa misma carpeta temporal como **Origen**.
-5. Seleccione una carpeta **distinta** como destino de **Expedientes**, preferiblemente con copias de seguridad.
-6. Seleccione una impresora de Windows y pulse **Activar vigilancia**.
+## Captura PCL sin PDFCreator: guía segura
 
-QRS-Card no instala ni configura PDFCreator automáticamente.
+**No uses estudios reales ni cambies la impresora predeterminada.** QRS-Card debe probarse primero con datos de simulación.
 
-## Operación segura
+1. Abre CPROT QRS-Card → **Captura PCL5 · LAB**. Elige una carpeta privada y pulsa **Iniciar receptor**.
+2. Verifica que muestre `127.0.0.1:19100`.
+3. Desde PowerShell consulta los drivers: `Get-PrinterDriver | Select-Object Name`. Identifica un driver que **realmente genere PCL5**.
+4. Ejecuta el script de configuración **sin aplicar cambios**:
 
-1. Los **PDF nuevos** se detectan y envían a la cola cuando estén completos.
-2. Los PDF **ya existentes** al activar el monitor **no se imprimen automáticamente**, para evitar duplicados. Para recuperar alguno, selecciónelo y use **Imprimir seleccionados / reimprimir** solo después de revisar su historial.
-3. Verifique la impresión física. Si aparece **«Revisar impresora»**, examine la cola de Windows antes de reintentar.
-4. Seleccione en la lista **únicamente los PDF de un mismo paciente**, escriba su nombre y confirme **Guardar seleccionados en expediente**.
-5. Compruebe los documentos y mantenga un respaldo del directorio oficial de expedientes.
+   ```powershell
+   .\scripts\setup_capture_printer.ps1
+   ```
 
-**QRS-Card no verifica la identidad de un paciente ni interpreta el contenido de los PDF.** La selección y revisión clínica son responsabilidad del operador.
+5. Cuando confirmes un controlador adecuado, aplica explícitamente la creación de una cola de laboratorio:
 
-## Archivos de configuración y recuperación
+   ```powershell
+   .\scripts\setup_capture_printer.ps1 -DriverName "NOMBRE EXACTO DEL CONTROLADOR PCL5" -Apply
+   ```
 
-En Windows se guardan en:
+6. Windows creará **CPROT QRS Capture (LAB)**, una impresora nueva con puerto RAW TCP local `127.0.0.1:19100`. No modifica la impresora predeterminada ni instala drivers.
+7. Elige esa impresora **solo** en una aplicación de prueba o en QRS con un estudio ficticio y envía un documento. El receptor muestra los bytes recibidos.
+8. Al terminar la conexión, revisa el trabajo. Guarda el archivo original. Si fue identificado como PCL y su estado es completo, selecciona el ejecutable GhostPCL y pulsa **Convertir PDF**.
+9. Compara el PDF con el reporte original: derivaciones, cuadrícula, continuidad, escala, velocidad, calibración y márgenes.
 
-```text
-%LOCALAPPDATA%\QRS-Card\config_qrs.json
-%LOCALAPPDATA%\QRS-Card\print_jobs.json
+Windows utiliza el **Standard TCP/IP Port Monitor** para enviar trabajos RAW. Puede consultar SNMP o requerir ajustes del controlador para no marcar la impresora virtual como desconectada. Si no llegan bytes, no significa necesariamente que QRS no haya imprimido: revisa primero que el driver y la cola de prueba sean compatibles.
+
+### Desinstalar únicamente la impresora de laboratorio
+
+```powershell
+.\scripts\remove_capture_printer.ps1
+.\scripts\remove_capture_printer.ps1 -Apply
 ```
 
-- `config_qrs.json` contiene rutas y el nombre de la impresora. Si existe una configuración anterior junto al script, se intenta leer para migrarla.
-- `print_jobs.json` es una bitácora de huellas SHA-256 de ruta, tamaño y fecha de los archivos. **No almacena el contenido clínico**.
-- Si la bitácora se corrompe, **el programa impide iniciar la vigilancia** para evitar imprimir otra vez sin control. Recupérela desde un respaldo o revísela antes de continuar.
-- Los archivos no se borran tras imprimir; solo se mueven después de confirmar la selección de expediente.
-- No hay envío a servicios externos por este programa. Proteja las rutas locales y los respaldos como información sensible.
+El primer comando **solo muestra el plan**. El segundo elimina la cola de prueba y su puerto si pertenecen a la captura local; nunca elimina controladores ni cambia la impresora predeterminada.
 
-## Límites conocidos
+## Arquitectura experimental
 
-- La aceptación de un trabajo por el spooler no demuestra impresión física correcta.
-- Las firmas de archivos evitan duplicados comunes, pero no garantizan **exactamente una impresión** frente a cambios de archivos, fallas de energía o problemas con la cola del sistema.
-- Si se cierra la aplicación mientras hay trabajos activos, hay que verificar qué se completó antes de repetir.
-- En carpetas compartidas de red que no emiten eventos correctamente, se recomienda capturar primero en un disco local.
-- El funcionamiento con impresoras reales y controladores de Windows requiere pruebas manuales.
+```mermaid
+flowchart LR
+    A["QRS-Card / prueba ficticia"] -->|"Impresora LAB"| B["Driver PCL5 Windows"]
+    B -->|"RAW TCP localhost:19100"| C["Receptor local CPROT"]
+    C --> D["Archivo original + SHA-256"]
+    D -->|"Opcional"| E["GhostPCL separado"]
+    E --> F["PDF de consulta"]
+    D --> G["Validación manual"]
+    F --> G
+```
 
-## Pruebas
+**La salida de una impresora no equivale necesariamente al registro ECG completo.** Esta aplicación no interpreta la señal del equipo, no modifica los archivos nativos QRS y no recrea datos que nunca fueron enviados al puerto de impresión.
 
-La lógica independiente de Windows dispone de pruebas automatizadas:
+## Watchdog de PDF y expedientes
+
+La modalidad anterior sigue disponible. Configura en PDFCreator (u otra aplicación) el guardado automático a una carpeta temporal, elige esa carpeta como **Origen**, selecciona una impresora Windows real y una carpeta diferente como **Destino**.
+
+- Vigila PDF creados, modificados o movidos. Comprueba estabilidad y estructura antes del envío.
+- Serializa impresiones, limita la resolución a un máximo de 300 DPI y persiste el registro de trabajos. Evita reenvíos automáticos frecuentes tras reinicios.
+- Selecciona y confirma **únicamente los estudios del mismo paciente** antes de moverlos al expediente.
+- «Enviado al spooler» **no confirma** que el papel se haya impreso.
+- El PDF creado por la modalidad experimental **no se envía automáticamente** a la cola clínica ni se asocia automáticamente a un paciente.
+
+## Datos, seguridad y recuperación
+
+- La nueva captura guarda por defecto sus originales y manifiestos en `%LOCALAPPDATA%\QRS-Card\capturas_pcl`.
+- En `%LOCALAPPDATA%\QRS-Card\pcl_capture_settings.json` se guardan puerto, ruta y ubicación opcional de GhostPCL.
+- Los manifiestos indican estado, tamaño, SHA-256 y formato estimado. **Los originales pueden contener datos sensibles de salud**: utiliza permisos Windows, cifrado de disco, copias de seguridad protegidas y control de acceso.
+- Capturas interrumpidas, por timeout o sobre el límite se guardan como `.partial` y **no se convierten automáticamente**.
+- El receptor escucha exclusivamente en la interfaz local y no envía contenido a una nube. Otro proceso del mismo equipo podría enviar datos al puerto; la aplicación no autentica procesos locales.
+- La modalidad PDF conserva su bitácora en `%LOCALAPPDATA%\QRS-Card\print_jobs.json`. No la borres para intentar corregir duplicados sin revisar el estado real de la impresora.
+- Los PDF de GhostPCL son **archivos de consulta experimentales**, no sustituyen reportes originales, estudios SCP ni copias certificadas.
+
+## Pruebas automatizadas
 
 ```bash
 python -m unittest discover -s tests -v
-python -m py_compile print_core.py print_manager.py
+python -m py_compile print_manager.py print_core.py cprot_ui.py pcl_capture.py pcl_capture_ui.py
 ```
 
-No se incluyen PDFs reales de pacientes ni documentos médicos sensibles.
+Las pruebas del prototipo incluyen sockets locales con cargas sintéticas, verificación exacta de bytes y SHA-256, separación de conexiones, trabajos parciales, defensa frente a rutas no válidas y conversión simulada sin GhostPCL real. La CI de GitHub también comprueba el arranque de la interfaz y crea una versión portátil de Windows.
 
-## Estructura
+**Ninguna prueba automatizada demuestra fidelidad clínica con QRS-Card ni funcionamiento con el modelo real de impresora.**
 
-- `print_manager.py`: interfaz, Watchdog, spooler de Windows y archivado.
-- `print_core.py`: gestión de trabajos, nombres seguros y espera de archivos.
-- `tests/test_print_core.py`: pruebas independientes de Windows.
+## Validación pendiente y documentación
+
+Antes de reemplazar PDFCreator o usar esta solución en un procedimiento médico se requiere verificar versión de QRS, **Real Time Print**, PCL5 emitido por el driver, comportamiento de impresión continua, segmentación de trabajos y exactitud visual frente a una impresión de referencia.
+
+Consulta el [diseño técnico de captura nativa](docs/DISENO_CAPTURA_NATIVA_QRS.md) para requisitos, decisiones y criterios de aceptación.
+
+**Fuentes:** [Microsoft — Add-PrinterPort](https://learn.microsoft.com/en-us/powershell/module/printmanagement/add-printerport) · [Microsoft — Standard TCP/IP Print Monitor](https://learn.microsoft.com/en-us/troubleshoot/windows-server/printing/standard-port-monitor-for-tcpip) · [Artifex — GhostPDL](https://github.com/ArtifexSoftware/ghostpdl).

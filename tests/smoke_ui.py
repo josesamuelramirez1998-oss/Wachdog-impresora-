@@ -12,6 +12,7 @@ class FakeController:
         self.work_queue = queue.Queue()
 
     def _start(self): pass
+    def _open_capture(self): pass
     def _list_printers(self):
         self.printer_combo.configure(values=["Impresora de prueba"])
         self.printer_combo.set("Impresora de prueba")
@@ -41,6 +42,13 @@ if __name__ == "__main__":
         assert root.theme_use() == "cprot-light", root.theme_use()
         toggle_theme(app)
         assert root.theme_use() == "cprot-dark", root.theme_use()
-        print("CPROT UI: dark/light themes and essential widgets OK")
+        from pcl_capture_ui import CaptureWindow
+        capture = CaptureWindow(root)
+        root.update_idletasks()
+        assert capture.capture_list.winfo_exists()
+        assert capture.convert_button.winfo_exists()
+        assert capture.output_var.get()
+        capture.close()
+        print("CPROT UI: dashboard and native PCL capture window OK")
     finally:
         root.destroy()
