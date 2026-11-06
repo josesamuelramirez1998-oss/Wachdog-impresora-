@@ -126,17 +126,9 @@ def print_pdf_to_spooler(path: Path, printer: str) -> int:
             x = (page_w - width) // 2
             y = (page_h - height) // 2
 
-            page_started = False
-            try:
-                dc.StartPage()
-                page_started = True
-                ImageWin.Dib(image).draw(dc.GetHandleOutput(), (x, y, x + width, y + height))
-                dc.EndPage()
-                page_started = False
-            finally:
-                # AbortDoc aborta el trabajo entero si StartPage/EndPage falla.
-                if page_started:
-                    pass
+            dc.StartPage()
+            ImageWin.Dib(image).draw(dc.GetHandleOutput(), (x, y, x + width, y + height))
+            dc.EndPage()
             image.close()
             del pix
 
@@ -418,6 +410,7 @@ class AppCardio:
             return
 
         self.active = True
+        self.selected_printer = self.printer_combo.get()
         self.worker = threading.Thread(target=self._worker, name="qrs-print-worker", daemon=True)
         self.worker.start()
         self.run_button.configure(state="disabled", text="✓ Vigilancia activa")
@@ -486,7 +479,7 @@ class AppCardio:
                     continue
                 self._log(f"🖨️ Enviando: {path.name}")
                 try:
-                    page_count = print_pdf_to_spooler(path, self.printer_combo.get())
+                    page_count = print_pdf_to_spooler(path, self.selected_printer)
                 except PrinterJobError as exc:
                     if exc.may_have_printed:
                         try:
