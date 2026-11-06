@@ -16,11 +16,28 @@ Pensado para software médico heredado. **No es un sistema clínico certificado*
 
 > **Importante:** «Enviado a impresora» quiere decir que Windows aceptó el trabajo en su cola. **NO confirma que haya salido el papel**, que exista tinta o que la impresora haya terminado.
 
+## Interfaz CPROT
+
+La versión mejorada incluye un panel de escritorio en español con **identidad visual CPROT**, temas **oscuro y claro**, indicadores de vigilancia, contador de PDFs, trabajos pendientes, selección de impresora y pasos separados para archivar estudios. La preferencia de tema queda guardada en el archivo de configuración local.
+
+- **01 Configuración:** escoge carpeta de captura, expedientes e impresora.
+- **02 Estudios disponibles:** identifica documentos y selecciona cuáles enviar o reimprimir.
+- **03 Archivar en expediente:** asigna solamente los estudios seleccionados al paciente.
+- **04 Actividad reciente:** muestra lo ocurrido sin guardar el contenido de los PDF en el registro.
+
+La cabecera usa el nombre CPROT en texto; no incluye una imagen del logotipo oficial de la empresa.
+
+## Versión portátil de Windows
+
+En el Pull Request se genera automáticamente una **versión de prueba para Windows x64** mediante PyInstaller. Abre la pestaña **Checks / Actions**, localiza el flujo **Windows portable application** y descarga el artefacto **CPROT-QRS-Card-Windows-x64**. Descomprime la carpeta completa y ejecuta **CPROT-QRS-Card.exe**; no necesitas instalar Python para esa compilación.
+
+> El archivo ejecutable aún no está firmado y Windows SmartScreen puede mostrar una advertencia. Es una **compilación experimental**, no una versión de producción, y debe probarse primero con PDFs sin datos médicos reales. No elimines componentes de la carpeta portable.
+
 ## Requisitos
 
 - Windows 10/11, Python 3.11 o superior y una impresora configurada en Windows.
 - PDFCreator u otra impresora virtual que guarde automáticamente archivos PDF en una carpeta temporal.
-- Paquetes indicados en `requirements.txt`: PyMuPDF, Pillow, pywin32 y watchdog.
+- Paquetes indicados en `requirements.txt`: PyMuPDF, Pillow, pywin32, watchdog y ttkbootstrap.
 
 ## Instalar en Windows
 
