@@ -49,6 +49,20 @@ class RegistryTest(unittest.TestCase):
         self.assertIsNone(reopened.claim(self.pdf))
         self.assertIsNotNone(reopened.claim(self.pdf, force=True))
 
+    def test_final_signature_prevents_reprint_after_file_finishes(self):
+        store = PrintRegistry(self.file)
+        early = store.claim(self.pdf)
+        # PDFCreator adds bytes after the filesystem creation event.
+        self.pdf.write_bytes(self.pdf.read_bytes() + b"last update")
+        final = (early[0], file_signature(self.pdf))
+        self.assertNotEqual(early[1], final[1])
+        self.assertFalse(store.was_handled(final))
+        store.record(final)
+        store.release(early)
+        reopened = PrintRegistry(self.file)
+        self.assertTrue(reopened.was_handled(final))
+        self.assertIsNone(reopened.claim(self.pdf))
+
     def test_uncertain_needs_manual_action(self):
         store = PrintRegistry(self.file)
         token = store.claim(self.pdf)
