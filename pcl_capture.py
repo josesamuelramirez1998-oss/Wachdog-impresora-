@@ -265,6 +265,12 @@ class RawCaptureServer:
                 self._workers.discard(threading.current_thread())
             self._slots.release()
 
+        # Cerrar el receptor puede hacer que recv() retorne EOF en vez de
+        # lanzar un error. Nunca declarar completo ese trabajo al parar.
+        if self._stop.is_set() and outcome == "complete":
+            outcome = "interrupted"
+            error = "Receptor detenido antes de confirmar el fin del trabajo."
+
         # Un sondeo de red vacío no representa un trabajo.
         if total == 0 and outcome == "complete":
             temp.unlink(missing_ok=True)
