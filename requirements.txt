@@ -1,0 +1,5 @@
+PyMuPDF>=1.24,<2.0
+Pillow>=10,<13
+watchdog>=4,<7
+pywin32>=306; sys_platform == "win32"
+ttkbootstrap>=2.2.0,<3.0

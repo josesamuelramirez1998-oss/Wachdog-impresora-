@@ -1,0 +1,38 @@
+name: Core tests
+
+on:
+  push:
+    branches: [main, "fix/**"]
+  pull_request:
+
+jobs:
+  core:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Compile Python modules
+        run: python -m py_compile print_core.py print_manager.py
+      - name: Test cross-platform logic
+        run: python -m unittest discover -s tests -v
+      - name: Install UI test dependencies
+        run: python -m pip install "ttkbootstrap>=2.2,<3"
+      - name: Smoke-test graphical interface (virtual display)
+        run: PYTHONPATH=. xvfb-run -a python tests/smoke_ui.py
+
+  windows-import:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          architecture: "x64"
+      - name: Install runtime dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Import Windows application
+        run: python -c "import print_manager, cprot_ui; print('Windows and UI modules loaded')"
+      - name: Test platform-independent logic
+        run: python -m unittest discover -s tests -v
