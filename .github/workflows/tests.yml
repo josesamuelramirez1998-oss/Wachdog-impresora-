@@ -14,7 +14,7 @@ jobs:
         with:
           python-version: "3.11"
       - name: Compile Python modules
-        run: python -m py_compile print_core.py print_manager.py
+        run: python -m py_compile print_core.py print_manager.py pcl_capture.py pcl_capture_ui.py cprot_ui.py
       - name: Test cross-platform logic
         run: python -m unittest discover -s tests -v
       - name: Install UI test dependencies
@@ -33,6 +33,6 @@ jobs:
       - name: Install runtime dependencies
         run: python -m pip install -r requirements.txt
       - name: Import Windows application
-        run: python -c "import print_manager, cprot_ui; print('Windows and UI modules loaded')"
+        run: python -c "import print_manager, cprot_ui, pcl_capture, pcl_capture_ui; print('Windows UI and PCL modules loaded')"
       - name: Test platform-independent logic
         run: python -m unittest discover -s tests -v
