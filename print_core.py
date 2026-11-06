@@ -165,6 +165,11 @@ class PrintRegistry:
                 return "Enviado a impresora"
             return "Sin procesar"
 
+    def was_handled(self, token: tuple[str, str]) -> bool:
+        """Consulta si esta versión final ya fue enviada o requiere revisión."""
+        with self.lock:
+            return token[1] in self.submitted or token[1] in self.uncertain
+
     def record(self, token: tuple[str, str], *, uncertain: bool = False) -> None:
         """Persiste una firma. Si falla el disco, propaga el error."""
         sig = token[1]
