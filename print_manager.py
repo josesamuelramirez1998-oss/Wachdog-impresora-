@@ -24,7 +24,7 @@ from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
 from print_core import (
-    PrintRegistry, move_study, patient_folder_name, pdf_files, wait_for_ready_pdf,
+    PrintRegistry, file_signature, move_study, patient_folder_name, pdf_files, wait_for_ready_pdf,
 )
 
 APP_FOLDER = Path(os.environ.get("LOCALAPPDATA") or Path.home()) / "QRS-Card"
@@ -450,7 +450,7 @@ class AppCardio:
         token = self.registry.claim(p)
         if token is None:
             return
-        self.work_queue.put((p, token))
+        self.work_queue.put((p, token, False))
         self._log(f"📥 PDF detectado: {p.name}")
         self._post("refresh", None)
 
@@ -472,7 +472,7 @@ class AppCardio:
         for path in choices:
             token = self.registry.claim(path, force=True)
             if token:
-                self.work_queue.put((path, token))
+                self.work_queue.put((path, token, True))
             else:
                 self._log(f"⚠️ {path.name}: ya está pendiente o no existe.")
         self._refresh_list()
@@ -480,7 +480,7 @@ class AppCardio:
     def _worker(self):
         while not self.stop.is_set():
             try:
-                path, token = self.work_queue.get(timeout=0.25)
+                path, token, manual = self.work_queue.get(timeout=0.25)
             except queue.Empty:
                 continue
             try:
@@ -491,13 +491,19 @@ class AppCardio:
                         self._log(f"⚠️ {path.name}: PDF no listo tras 45 s. "
                                   "Puede recuperarlo con «Imprimir seleccionados».")
                     continue
+                # La primera firma pudo corresponder a un PDF aún escribiéndose.
+                # Registrar la versión validada evita duplicados tras reinicios.
+                final_token = (token[0], file_signature(path))
+                if not manual and self.registry.was_handled(final_token):
+                    self._log(f"ℹ️ {path.name}: ya enviado o pendiente de revisión. Omitido.")
+                    continue
                 self._log(f"🖨️ Enviando: {path.name}")
                 try:
                     page_count = print_pdf_to_spooler(path, self.selected_printer)
                 except PrinterJobError as exc:
                     if exc.may_have_printed:
                         try:
-                            self.registry.record(token, uncertain=True)
+                            self.registry.record(final_token, uncertain=True)
                         except OSError as write_error:
                             self._log(f"❌ No se pudo persistir el estado: {write_error}")
                             self._post("fatal", f"No se pudo guardar el resultado incierto de {path.name}.\nNo reimprima sin comprobar primero la cola de Windows.\n\n{write_error}")
@@ -508,7 +514,7 @@ class AppCardio:
                         self._log(f"❌ No se pudo imprimir {path.name}: {exc}")
                     continue
                 try:
-                    self.registry.record(token)
+                    self.registry.record(final_token)
                     self._log(f"✅ {path.name}: {page_count} página(s) ENVIADAS a cola Windows.")
                 except OSError as exc:
                     self._log(f"⚠️ Se envió a la impresora, pero falló la bitácora: {exc}. "
