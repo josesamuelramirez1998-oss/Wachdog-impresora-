@@ -40,7 +40,7 @@ def pdf_files(folder: str | Path) -> list[Path]:
                 Path(e.path) for e in entries
                 if e.is_file(follow_symlinks=False) and e.name.lower().endswith(".pdf")
             ]
-    except FileNotFoundError:
+    except OSError:
         return []
     return sorted(result, key=lambda p: p.name.casefold())
 
