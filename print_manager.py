@@ -189,73 +189,8 @@ class AppCardio:
             self.root.after(300, lambda: messagebox.showerror("Bitácora dañada", self.registry_error))
 
     def _build_ui(self):
-        container = ttk.Frame(self.root, padding=15)
-        container.pack(fill="both", expand=True)
-        ttk.Label(container, text="QRS-Card · Puente de impresión", font=("Segoe UI", 16, "bold")).pack(anchor="w")
-        ttk.Label(
-            container,
-            text="Recibe PDFCreator, envía trabajos al spooler y permite archivar estudios seleccionados.",
-            wraplength=720,
-        ).pack(anchor="w", pady=(1, 10))
-
-        paths = ttk.LabelFrame(container, text="1 · Configuración", padding=10)
-        paths.pack(fill="x")
-        self.origin_label = ttk.Label(paths, text="Origen: sin seleccionar", wraplength=690)
-        self.origin_label.pack(anchor="w")
-        ttk.Button(paths, text="Seleccionar carpeta origen", command=self._select_origin).pack(anchor="w", pady=(3, 8))
-        self.destination_label = ttk.Label(paths, text="Expedientes: sin seleccionar", wraplength=690)
-        self.destination_label.pack(anchor="w")
-        ttk.Button(paths, text="Seleccionar carpeta de expedientes", command=self._select_destination).pack(anchor="w", pady=(3, 8))
-        ttk.Label(paths, text="Impresora instalada en Windows").pack(anchor="w")
-        self.printer_combo = ttk.Combobox(paths, width=65, state="readonly")
-        self.printer_combo.pack(anchor="w", fill="x", pady=(3, 4))
-        self.printer_combo.bind("<<ComboboxSelected>>", lambda _event: self._save_config())
-        ttk.Button(paths, text="Actualizar lista de impresoras", command=self._list_printers).pack(anchor="w")
-        self._list_printers()
-
-        self.run_button = ttk.Button(container, text="▶ Activar vigilancia", command=self._start)
-        self.run_button.pack(anchor="w", pady=(10, 5))
-        self.status_label = ttk.Label(container, text="Vigilancia detenida")
-        self.status_label.pack(anchor="w", pady=(0, 8))
-
-        patient = ttk.LabelFrame(container, text="2 · Seleccionar estudios y asignar paciente", padding=10)
-        patient.pack(fill="both", expand=True)
-        ttk.Label(
-            patient, wraplength=700,
-            text="Seleccione únicamente los PDF que correspondan al mismo paciente. "
-                 "Los trabajos pendientes de impresión no pueden moverse.",
-        ).pack(anchor="w")
-        files_frame = ttk.Frame(patient)
-        files_frame.pack(fill="both", expand=True, pady=(7, 6))
-        scroll = ttk.Scrollbar(files_frame, orient="vertical")
-        self.files_box = tk.Listbox(files_frame, height=8, selectmode=tk.EXTENDED, exportselection=False,
-                                    yscrollcommand=scroll.set, font=("Consolas", 9))
-        scroll.configure(command=self.files_box.yview)
-        self.files_box.pack(side="left", fill="both", expand=True)
-        scroll.pack(side="right", fill="y")
-        actions = ttk.Frame(patient)
-        actions.pack(fill="x", pady=(0, 7))
-        ttk.Button(actions, text="Actualizar PDFs", command=self._refresh_list).pack(side="left")
-        ttk.Button(actions, text="Imprimir seleccionados / reimprimir", command=self._print_selected).pack(side="left", padx=8)
-        name_row = ttk.Frame(patient)
-        name_row.pack(fill="x", pady=(0, 5))
-        ttk.Label(name_row, text="Nombre del paciente:").pack(side="left")
-        self.patient_entry = ttk.Entry(name_row)
-        self.patient_entry.pack(side="left", fill="x", expand=True, padx=8)
-        self.classify_button = ttk.Button(patient, text="Guardar seleccionados en expediente", command=self._classify)
-        self.classify_button.pack(anchor="w")
-
-        logs = ttk.LabelFrame(container, text="3 · Registro de eventos", padding=8)
-        logs.pack(fill="x", pady=(10, 0))
-        self.log_text = tk.Text(logs, height=7, state="disabled", font=("Consolas", 9))
-        self.log_text.pack(fill="x")
-        ttk.Label(
-            container,
-            text="Importante: «Enviado a impresora» no confirma que el papel haya salido. "
-                 "Revise físicamente el documento antes de entregar o archivar.",
-            wraplength=720,
-            foreground="#8b4513",
-        ).pack(anchor="w", pady=(7, 0))
+        from cprot_ui import build_interface
+        build_interface(self)
 
     def _post(self, kind: str, value):
         self.ui_queue.put((kind, value))
@@ -287,7 +222,8 @@ class AppCardio:
                 if self.observer:
                     self.observer.stop()
                 self.run_button.configure(state="disabled", text="Vigilancia detenida (error de bitácora)")
-                self.status_label.configure(text="Error de bitácora: reinicie después de resolverlo")
+                self.status_label.configure(text="Error de bitácora")
+                self.header_status_label.configure(text="●  Error de bitácora", fg="#F15B67")
                 messagebox.showerror("Vigilancia detenida", value)
             elif kind == "classified":
                 self.classifying = False
@@ -358,6 +294,11 @@ class AppCardio:
                 self.destination_label.configure(text=f"Expedientes: {self.destination}")
             else:
                 self.destination = ""
+            selected_theme = settings.get("tema", "")
+            if selected_theme in ("cprot-dark", "cprot-light"):
+                self.root.theme_use(selected_theme)
+                from cprot_ui import _decorate_tk_widgets
+                _decorate_tk_widgets(self)
             name = settings.get("impresora", "")
             if name in self.printer_combo["values"]:
                 self.printer_combo.set(name)
@@ -372,6 +313,7 @@ class AppCardio:
                 "impresora": self.printer_combo.get(),
                 "ruta_origen": self.origin,
                 "ruta_destino": self.destination,
+                "tema": self.root.theme_use(),
             }, ensure_ascii=False, indent=2), encoding="utf-8")
             os.replace(tempfile, CONFIG_FILE)
         except OSError as exc:
@@ -389,6 +331,8 @@ class AppCardio:
             self.files_box.insert(tk.END, f"{path.name}   [{status}]")
             if path.name in previous:
                 self.files_box.selection_set(idx)
+        self.metric_files.configure(text=str(len(self.listed)))
+        self.metric_queue.configure(text=str(self.work_queue.qsize()))
 
     def _start(self):
         if self.active:
@@ -429,7 +373,8 @@ class AppCardio:
         self.worker.start()
         self.run_button.configure(state="disabled", text="✓ Vigilancia activa")
         self.printer_combo.configure(state="disabled")
-        self.status_label.configure(text="Vigilando nuevos PDF; uno por vez")
+        self.status_label.configure(text="Vigilancia activa")
+        self.header_status_label.configure(text="●  Vigilando documentos", fg="#12B886")
         self._save_config()
         self._log("🟢 Vigilancia activada. Los PDF existentes NO se reimprimen automáticamente.")
         self._refresh_list()
@@ -622,6 +567,7 @@ class AppCardio:
 
 
 if __name__ == "__main__":
-    root = tk.Tk()
+    from cprot_ui import make_root
+    root = make_root()
     AppCardio(root)
     root.mainloop()
