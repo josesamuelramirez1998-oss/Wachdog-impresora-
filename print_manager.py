@@ -188,6 +188,11 @@ class AppCardio:
         if self.registry_error:
             self.root.after(300, lambda: messagebox.showerror("Bitácora dañada", self.registry_error))
 
+    def _open_capture(self):
+        """Abre el módulo experimental sin cambiar impresoras ni iniciar captura."""
+        from pcl_capture_ui import open_capture_window
+        open_capture_window(self.root)
+
     def _build_ui(self):
         from cprot_ui import build_interface
         build_interface(self)
