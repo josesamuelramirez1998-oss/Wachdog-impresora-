@@ -131,6 +131,8 @@ def build_interface(app):
         command=lambda: toggle_theme(app),
     )
     app.theme_button.pack(side="left", padx=(0, 8))
+    ttk.Button(actions, text="Captura PCL5 · LAB",
+               bootstyle="warning outline", command=app._open_capture).pack(side="left", padx=(0, 8))
     app.run_button = ttk.Button(
         actions, text="▶  ACTIVAR VIGILANCIA", bootstyle="primary",
         command=app._start, width=23,
