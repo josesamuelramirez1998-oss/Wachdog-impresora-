@@ -42,6 +42,29 @@ class WindowsIntegrationTest(unittest.TestCase):
         self.assertEqual(len(events), 3)
         self.assertTrue(events[-1].endswith("renombrado.pdf"))
 
+    def test_app_window_constructs_without_real_printer(self):
+        import print_manager as pm
+        from cprot_ui import make_root, toggle_theme
+
+        root = make_root()
+        try:
+            with patch.object(pm, "APP_FOLDER", self.folder / "settings"):
+                with patch.object(pm, "CONFIG_FILE", self.folder / "settings" / "config_qrs.json"):
+                    with patch.object(pm, "LEDGER_FILE", self.folder / "settings" / "print_jobs.json"):
+                        with patch.object(pm.win32print, "EnumPrinters", return_value=[
+                            (0, None, "Impresora de prueba", None)
+                        ]):
+                            with patch.object(pm.win32print, "GetDefaultPrinter", return_value="Impresora de prueba"):
+                                app = pm.AppCardio(root)
+                                root.update_idletasks()
+                                root.update()
+                                self.assertEqual(app.printer_combo.get(), "Impresora de prueba")
+                                self.assertEqual(app.metric_files.cget("text"), "0")
+                                toggle_theme(app)
+                                self.assertEqual(root.theme_use(), "cprot-light")
+        finally:
+            root.destroy()
+
     def test_submission_success_using_fake_printer(self):
         import print_manager as pm
         dc = Mock()
