@@ -281,6 +281,14 @@ class AppCardio:
                 self.log_text.configure(state="disabled")
             elif kind == "refresh":
                 self._refresh_list()
+            elif kind == "fatal":
+                self.active = False
+                self.stop.set()
+                if self.observer:
+                    self.observer.stop()
+                self.run_button.configure(state="disabled", text="Vigilancia detenida (error de bitácora)")
+                self.status_label.configure(text="Error de bitácora: reinicie después de resolverlo")
+                messagebox.showerror("Vigilancia detenida", value)
             elif kind == "classified":
                 self.classifying = False
                 self.classify_button.configure(state="normal")
@@ -313,6 +321,9 @@ class AppCardio:
                 self.printer_combo.set("")
 
     def _select_origin(self):
+        if self.active or self.classifying:
+            messagebox.showwarning("Vigilancia activa", "Detenga y reinicie la aplicación antes de cambiar las carpetas.")
+            return
         chosen = filedialog.askdirectory(title="Carpeta temporal donde guarda PDFCreator")
         if chosen:
             self.origin = os.path.normpath(chosen)
@@ -321,6 +332,9 @@ class AppCardio:
             self._refresh_list()
 
     def _select_destination(self):
+        if self.active or self.classifying:
+            messagebox.showwarning("Vigilancia activa", "Detenga y reinicie la aplicación antes de cambiar las carpetas.")
+            return
         chosen = filedialog.askdirectory(title="Carpeta oficial para expedientes")
         if chosen:
             self.destination = os.path.normpath(chosen)
@@ -486,6 +500,7 @@ class AppCardio:
                             self.registry.record(token, uncertain=True)
                         except OSError as write_error:
                             self._log(f"❌ No se pudo persistir el estado: {write_error}")
+                            self._post("fatal", f"No se pudo guardar el resultado incierto de {path.name}.\nNo reimprima sin comprobar primero la cola de Windows.\n\n{write_error}")
                         self._log(f"⚠️ Resultado incierto de {path.name}: {exc}. "
                                   "Verifique la impresora antes de reintentar.")
                     else:
@@ -498,6 +513,7 @@ class AppCardio:
                 except OSError as exc:
                     self._log(f"⚠️ Se envió a la impresora, pero falló la bitácora: {exc}. "
                               "EVITE reimprimir sin verificar primero.")
+                    self._post("fatal", f"No se pudo guardar la bitácora del documento {path.name}.\nRevise la cola de impresión antes de reintentar.\n\n{exc}")
             except Exception as exc:
                 self.retry_after[token[0]] = time.monotonic() + 10
                 self._log(f"❌ Error inesperado al procesar {path.name}: {exc}")
