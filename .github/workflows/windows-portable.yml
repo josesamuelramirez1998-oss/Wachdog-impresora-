@@ -6,6 +6,10 @@ on:
     paths:
       - "print_manager.py"
       - "print_core.py"
+      - "pcl_capture.py"
+      - "pcl_capture_ui.py"
+      - "scripts/**"
+      - "docs/**"
       - "cprot_ui.py"
       - "requirements.txt"
       - ".github/workflows/windows-portable.yml"
@@ -25,17 +29,21 @@ jobs:
           python -m pip install "pyinstaller>=6.10,<7"
       - name: Verify imports and compile
         run: |
-          python -m py_compile print_manager.py print_core.py cprot_ui.py
-          python -c "import print_manager, cprot_ui"
+          python -m py_compile print_manager.py print_core.py cprot_ui.py pcl_capture.py pcl_capture_ui.py
+          python -c "import print_manager, cprot_ui, pcl_capture, pcl_capture_ui"
       - name: Build portable application
         shell: pwsh
         run: |
-          python -m PyInstaller --noconfirm --clean --onedir --windowed --name CPROT-QRS-Card --collect-all ttkbootstrap --hidden-import win32timezone print_manager.py
+          python -m PyInstaller --noconfirm --clean --onedir --windowed --name CPROT-QRS-Card --collect-all ttkbootstrap --hidden-import win32timezone --hidden-import pcl_capture_ui --hidden-import pcl_capture print_manager.py
           if (-not (Test-Path "dist/CPROT-QRS-Card/CPROT-QRS-Card.exe")) { throw "No se generó el ejecutable Windows" }
       - name: Include readme
         shell: pwsh
         run: |
           Copy-Item README.md "dist/CPROT-QRS-Card/LEEME.md"
+          New-Item -ItemType Directory -Force -Path "dist/CPROT-QRS-Card/scripts" | Out-Null
+          Copy-Item scripts/*.ps1 "dist/CPROT-QRS-Card/scripts/"
+          New-Item -ItemType Directory -Force -Path "dist/CPROT-QRS-Card/docs" | Out-Null
+          Copy-Item docs/DISENO_CAPTURA_NATIVA_QRS.md "dist/CPROT-QRS-Card/docs/"
       - name: Upload Windows portable build
         uses: actions/upload-artifact@v4
         with:
